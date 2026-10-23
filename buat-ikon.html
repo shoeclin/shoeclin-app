@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buat ikon Shoeclin</title>
+<style>
+body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;max-width:720px;margin:0 auto;padding:28px 20px;color:#0F172A;background:#F3F8FF;line-height:1.5}
+h1{font-size:21px;margin:0 0 6px}
+p{color:#475569;font-size:14px;margin:0 0 16px}
+.atur{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.atur label{font-size:12px;color:#7E8CA3}
+.atur input{font:inherit;padding:7px 9px;border:1px solid #E4EBF7;border-radius:9px;background:#fff}
+.atur input[type=text]{width:60px;text-align:center;font-weight:700}
+.atur input[type=color]{width:46px;height:36px;padding:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin:18px 0 20px}
+.k{background:#fff;border:1px solid #E4EBF7;border-radius:14px;padding:16px 12px;text-align:center}
+.k canvas{width:96px;height:96px;display:block;margin:0 auto 10px}
+.k b{display:block;font-size:12.5px}
+.k span{display:block;font-size:11.5px;color:#7E8CA3;margin-bottom:8px}
+button{font:inherit;font-weight:600;border:0;border-radius:11px;cursor:pointer}
+.utama{font-size:15px;padding:13px 20px;color:#fff;background:linear-gradient(135deg,#2563EB,#1E3A8A)}
+.kecil{font-size:12px;padding:7px 12px;color:#1D4ED8;background:#fff;border:1px solid #BFDBFE}
+</style>
+</head>
+<body>
+<h1>Buat ikon aplikasi</h1>
+<p>Tekan <b>Unduh semua</b>. Kalau browser bertanya soal mengunduh banyak file, pilih Izinkan.
+  Pindahkan keempat file PNG ke folder yang sama dengan index.html, lalu ikut diunggah ke GitHub.
+  Nama file jangan diubah.</p>
+<div class="atur">
+  <label for="huruf">Huruf</label><input id="huruf" type="text" value="S" maxlength="2">
+  <label for="w1">Warna atas</label><input id="w1" type="color" value="#3B82F6">
+  <label for="w2">Warna bawah</label><input id="w2" type="color" value="#1E3A8A">
+</div>
+<div class="grid" id="grid"></div>
+<button class="utama" id="semua">Unduh semua (4 file)</button>
+<script>
+var IKON = [
+  { nama: 'icon-192.png',          s: 192, bulat: true,  skala: .56, ket: 'Ikon Android' },
+  { nama: 'icon-512.png',          s: 512, bulat: true,  skala: .56, ket: 'Ikon besar' },
+  { nama: 'icon-maskable-512.png', s: 512, bulat: false, skala: .40, ket: 'Ikon adaptif Android' },
+  { nama: 'apple-touch-icon.png',  s: 180, bulat: false, skala: .52, ket: 'Ikon iPhone' }
+];
+function nilai(id) { return document.getElementById(id).value; }
+function gambar(c, ik) {
+  var s = ik.s; c.width = s; c.height = s;
+  var g = c.getContext('2d');
+  g.clearRect(0, 0, s, s);
+  g.beginPath();
+  if (ik.bulat) {
+    var r = s * .22;
+    g.moveTo(r, 0); g.arcTo(s, 0, s, s, r); g.arcTo(s, s, 0, s, r);
+    g.arcTo(0, s, 0, 0, r); g.arcTo(0, 0, s, 0, r); g.closePath();
+  } else g.rect(0, 0, s, s);
+  var gr = g.createLinearGradient(0, 0, s, s);
+  gr.addColorStop(0, nilai('w1')); gr.addColorStop(1, nilai('w2'));
+  g.fillStyle = gr; g.fill();
+  var kilau = g.createRadialGradient(s * .28, s * .18, 0, s * .28, s * .18, s * .85);
+  kilau.addColorStop(0, 'rgba(255,255,255,.24)'); kilau.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = kilau; g.fill();
+  var huruf = (nilai('huruf') || 'S').trim().slice(0, 2) || 'S';
+  g.fillStyle = '#FFFFFF';
+  g.font = '700 ' + Math.round(s * ik.skala * (huruf.length > 1 ? .72 : 1)) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(15,23,42,.25)'; g.shadowBlur = s * .03; g.shadowOffsetY = s * .01;
+  g.fillText(huruf, s / 2, s * .53);
+}
+function unduh(c, nama) {
+  c.toBlob(function (b) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = nama;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }, 'image/png');
+}
+function render() {
+  var grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  IKON.forEach(function (ik) {
+    var k = document.createElement('div'); k.className = 'k';
+    var c = document.createElement('canvas'); gambar(c, ik); ik.canvas = c;
+    var b = document.createElement('button'); b.className = 'kecil'; b.textContent = 'Unduh';
+    b.onclick = function () { unduh(c, ik.nama); };
+    k.appendChild(c);
+    k.insertAdjacentHTML('beforeend', '<b>' + ik.nama + '</b><span>' + ik.ket + '</span>');
+    k.appendChild(b);
+    grid.appendChild(k);
+  });
+}
+['huruf', 'w1', 'w2'].forEach(function (id) { document.getElementById(id).addEventListener('input', render); });
+document.getElementById('semua').onclick = function () {
+  IKON.forEach(function (ik, i) { setTimeout(function () { unduh(ik.canvas, ik.nama); }, i * 500); });
+};
+render();
+</script>
+</body>
+</html>
