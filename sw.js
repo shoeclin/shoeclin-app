@@ -1,8 +1,10 @@
 /*************************************************************
- * SHOECLIN APP — sw.js
+ * SHOECLIN APP — sw.js (versi 1.1)
  * Pekerja latar: menampilkan notifikasi dari Firebase dan menyimpan
- * tampilan aplikasi supaya tetap terbuka saat sinyal putus.
- * Tidak perlu diubah.
+ * tampilan aplikasi di HP. Tidak perlu diubah.
+ *
+ * 1.1: tampilan aplikasi langsung diambil dari memori HP (instan),
+ *      versi terbaru dari GitHub diunduh diam-diam untuk pembukaan berikutnya.
  *************************************************************/
 importScripts('config.js');
 
@@ -34,22 +36,24 @@ self.addEventListener('activate', function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 
-// Ambil versi terbaru dari internet; kalau gagal, pakai simpanan.
+// Pakai simpanan di HP dulu (instan), sambil mengambil versi baru di belakang.
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  e.respondWith(fetch(req).then(function (res) {
+
+  var simpanBaru = null;
+  var segar = fetch(req).then(function (res) {
     if (res && res.ok && !url.search) {
       var salin = res.clone();
-      caches.open(CACHE).then(function (c) { c.put(req, salin); });
+      simpanBaru = caches.open(CACHE).then(function (c) { return c.put(req, salin); });
     }
     return res;
-  }).catch(function () {
-    return caches.match(req, { ignoreSearch: true }).then(function (hit) {
-      return hit || caches.match('index.html');
-    });
+  });
+  e.waitUntil(segar.then(function () { return simpanBaru; }).catch(function () {}));
+  e.respondWith(caches.match(req, { ignoreSearch: true }).then(function (simpan) {
+    return simpan || segar.catch(function () { return caches.match('index.html'); });
   }));
 });
 

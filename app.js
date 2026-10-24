@@ -1,8 +1,14 @@
 /*************************************************************
- * SHOECLIN APP — app.js (versi 1.0)
+ * SHOECLIN APP — app.js (versi 1.1)
  * Cangkang aplikasi HP: memilih peran, membuka halaman Apps Script,
  * dan mengurus notifikasi. Alamat & Firebase diisi di config.js.
  * Tidak perlu diubah.
+ *
+ * Perubahan 1.1 (lebih cepat):
+ *  - Halaman Apps Script dibuka paling dulu; library notifikasi
+ *    baru dimuat setelah halaman tampil.
+ *  - Admin: mode yang satunya disiapkan di belakang layar,
+ *    jadi pindah Kurir/Admin langsung tampil.
  *************************************************************/
 (function () {
   'use strict';
@@ -12,6 +18,7 @@
   var tunjuk = function (id, ya) { var el = $(id); if (el) el.classList.toggle('hide', !ya); };
   var APP_URL = new URL('./', location.href).href;
   var HARI = 86400000;
+  var FB_URL = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
   var LS = {
     get: function (k) { try { return localStorage.getItem('shc_app_' + k) || ''; } catch (e) { return ''; } },
@@ -22,6 +29,7 @@
   var S = { peran: LS.get('peran'), nama: LS.get('nama'), kunci: LS.get('kunci'), mode: '', pilih: 'kurir' };
   var FRAME = { kurir: null, admin: null };
   var swReg = null, messaging = null, installEvt = null, toastTimer = null, kunciDicek = false;
+  var fbJanji = null, sudahMuat = false, antreMuat = [];
 
   var IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -98,10 +106,18 @@
     if (kunci) LS.set('kunci', kunci); else LS.del('kunci');
     kunciDicek = true;
     hapusFrame('kurir'); hapusFrame('admin');
+    sudahMuat = false;
     bukaApp();
   }
 
   /* ==================== HALAMAN APPS SCRIPT ==================== */
+  /** Pekerjaan tambahan ditunda sampai halaman utama tampil, supaya tidak berebut sinyal. */
+  function setelahMuat(fn) { if (sudahMuat) setTimeout(fn, 300); else antreMuat.push(fn); }
+  function tandaiMuat() {
+    if (sudahMuat) return;
+    sudahMuat = true;
+    antreMuat.splice(0).forEach(function (fn) { setTimeout(fn, 300); });
+  }
   function bukaApp() {
     tunjuk('setup', false); tunjuk('app', true);
     var admin = S.peran === 'admin';
@@ -109,8 +125,18 @@
     tunjuk('seg', admin);
     gantiMode(admin ? (LS.get('mode') || 'admin') : 'kurir');
     perbaruiNotifUI();
-    segarkanTokenDiam();
-    if (admin && !kunciDicek) cekKunciLatar();
+    setelahMuat(segarkanTokenDiam);
+    if (admin) {
+      if (!kunciDicek) setelahMuat(cekKunciLatar);
+      setelahMuat(function () { setTimeout(siapkanModeLain, 2500); });
+    }
+    setTimeout(tandaiMuat, 9000);   // cadangan kalau halaman lama sekali
+  }
+  /** Admin: siapkan mode yang tidak sedang dibuka, supaya pindah mode langsung tampil. */
+  function siapkanModeLain() {
+    if (S.peran !== 'admin' || navigator.onLine === false) return;
+    var lain = S.mode === 'admin' ? 'kurir' : 'admin';
+    if (!FRAME[lain]) buatFrame(lain);
   }
   /** Kalau ADMIN_MODE diganti di server, HP ini diminta kunci baru. */
   function cekKunciLatar() {
@@ -141,19 +167,26 @@
     var f = document.createElement('iframe');
     f.title = 'Shoeclin ' + m;
     f.setAttribute('allow', 'camera; clipboard-write; fullscreen');
-    var rec = { el: f, mode: m, siap: false, lama: false, timer: null };
+    if (m !== S.mode) f.classList.add('hide');
+    var rec = { el: f, mode: m, siap: false, lama: false, teks: '', timer: null, timerTeks: null };
     f.addEventListener('load', function () {
       if (!f.getAttribute('src')) return;
-      rec.siap = true; rec.lama = false; clearTimeout(rec.timer); aturMuat(rec);
+      rec.siap = true; rec.lama = false; rec.teks = '';
+      clearTimeout(rec.timer); clearTimeout(rec.timerTeks);
+      aturMuat(rec);
+      if (rec.mode === S.mode) tandaiMuat();
     });
     FRAME[m] = rec;
     muatFrame(rec);
     $('stage').appendChild(f);
   }
   function muatFrame(rec) {
-    clearTimeout(rec.timer);
-    rec.siap = false; rec.lama = false;
+    clearTimeout(rec.timer); clearTimeout(rec.timerTeks);
+    rec.siap = false; rec.lama = false; rec.teks = '';
     if (navigator.onLine === false) { aturMuat(rec); return; }
+    rec.timerTeks = setTimeout(function () {
+      rec.teks = 'Server Google sedang menyiapkan halaman...'; aturMuat(rec);
+    }, 6000);
     rec.timer = setTimeout(function () { rec.lama = true; aturMuat(rec); }, 25000);
     rec.el.src = urlFrame(rec.mode) + '&_=' + Date.now();
     aturMuat(rec);
@@ -164,11 +197,13 @@
     tunjuk('offline', offline);
     tunjuk('muat', !rec.siap && !offline);
     tunjuk('muatLama', rec.lama && !rec.siap);
+    $('muatTeks').textContent = rec.teks ||
+      (rec.mode === 'admin' ? 'Membuka dashboard admin...' : 'Membuka portal kurir...');
   }
   function muatUlang() { var r = FRAME[S.mode]; if (r) muatFrame(r); else buatFrame(S.mode); }
   function hapusFrame(m) {
     var r = FRAME[m]; if (!r) return;
-    clearTimeout(r.timer); r.el.remove(); FRAME[m] = null;
+    clearTimeout(r.timer); clearTimeout(r.timerTeks); r.el.remove(); FRAME[m] = null;
   }
 
   /* ==================== NOTIFIKASI ==================== */
@@ -231,16 +266,33 @@
       .then(function () { return navigator.serviceWorker.ready; })
       .then(function (r) { swReg = r; return r; });
   }
+  function muatSkrip(src) {
+    return new Promise(function (ok, gagal) {
+      var s = document.createElement('script');
+      s.src = src; s.async = false;
+      s.onload = function () { ok(); };
+      s.onerror = function () { s.remove(); gagal(new Error('Library notifikasi gagal dimuat. Cek sinyal lalu coba lagi.')); };
+      document.head.appendChild(s);
+    });
+  }
+  /** Library Firebase baru diunduh saat dibutuhkan, bukan saat aplikasi dibuka. */
+  function muatFirebase() {
+    if (window.firebase && window.firebase.messaging) return Promise.resolve();
+    if (!fbJanji) {
+      var langkah = window.firebase ? Promise.resolve() : muatSkrip(FB_URL + 'firebase-app-compat.js');
+      fbJanji = langkah.then(function () { return muatSkrip(FB_URL + 'firebase-messaging-compat.js'); });
+      fbJanji.catch(function () { fbJanji = null; });
+    }
+    return fbJanji;
+  }
   function initMessaging() {
     if (messaging) return Promise.resolve(messaging);
-    if (!window.firebase || !firebase.messaging)
-      return Promise.reject(new Error('Library notifikasi gagal dimuat. Cek sinyal lalu buka ulang aplikasi.'));
-    var cek = firebase.messaging.isSupported ? firebase.messaging.isSupported() : true;
-    return Promise.resolve(cek).then(function (ok) {
+    return muatFirebase().then(function () {
+      return firebase.messaging.isSupported ? firebase.messaging.isSupported() : true;
+    }).then(function (ok) {
       if (!ok) throw new Error('HP atau browser ini belum mendukung notifikasi web.');
       if (!firebase.apps.length) firebase.initializeApp(C.firebase);
-      messaging = firebase.messaging();
-      messaging.onMessage(pesanDepan);
+      if (!messaging) { messaging = firebase.messaging(); messaging.onMessage(pesanDepan); }
       return messaging;
     });
   }

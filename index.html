@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shoeclin">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="dns-prefetch" href="https://script.googleusercontent.com">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -177,7 +179,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
   </div>
 
   <div class="stage" id="stage">
-    <div class="muat" id="muat"><i class="spin"></i><p>Memuat Shoeclin...</p>
+    <div class="muat" id="muat"><i class="spin"></i><p id="muatTeks">Memuat Shoeclin...</p>
       <div id="muatLama" class="hide"><p class="hint">Agak lama, mungkin sinyal lemah.</p>
         <button type="button" class="btn ghost sm" id="btnCoba">Coba lagi</button></div></div>
     <div class="muat hide" id="offline"><b>Tidak ada sinyal</b>
@@ -212,9 +214,8 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
   <button type="button" id="tAksi" class="hide"></button>
 </div>
 
+<!-- Library notifikasi (Firebase) dimuat belakangan oleh app.js supaya halaman tampil lebih cepat. -->
 <script src="config.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
