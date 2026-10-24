@@ -26,5 +26,5 @@ var SHOECLIN = {
   vapidKey: 'BJK2wphkF6nCZnAh3Y4O8UNd1cY5W-N-L8-Qq1oQkDodyuj3b3n50A6ukDdtZGvwFHAaWJFnrRRjW-d5dAcuFw0',
 
   // Naikkan angka ini setiap kali mengubah file aplikasi, supaya HP mengambil versi baru.
-  versi: '1.0.0'
+  versi: '1.1.0'
 };
