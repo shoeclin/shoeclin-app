@@ -1,14 +1,12 @@
 /*************************************************************
- * SHOECLIN APP — app.js (versi 1.1)
+ * SHOECLIN APP — app.js (versi 1.2)
  * Cangkang aplikasi HP: memilih peran, membuka halaman Apps Script,
  * dan mengurus notifikasi. Alamat & Firebase diisi di config.js.
  * Tidak perlu diubah.
  *
- * Perubahan 1.1 (lebih cepat):
- *  - Halaman Apps Script dibuka paling dulu; library notifikasi
- *    baru dimuat setelah halaman tampil.
- *  - Admin: mode yang satunya disiapkan di belakang layar,
- *    jadi pindah Kurir/Admin langsung tampil.
+ * 1.1: halaman dibuka paling dulu, library notifikasi menyusul;
+ *      mode yang satunya disiapkan di belakang layar.
+ * 1.2: admin punya mode ketiga "AI" (asisten analis bisnis, lihat asisten.js).
  *************************************************************/
 (function () {
   'use strict';
@@ -45,18 +43,18 @@
     var f = C.firebase || {};
     return !!(f.apiKey && f.projectId && f.messagingSenderId && f.appId && C.vapidKey);
   }
-  function api(aksi, data) {
+  function api(aksi, data, batasMs) {
     var isi = { aksi: aksi };
     Object.keys(data || {}).forEach(function (k) { isi[k] = data[k]; });
     var ctrl = window.AbortController ? new AbortController() : null;
-    var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+    var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, batasMs || 25000);
     return fetch(C.appsScriptUrl, { method: 'POST', body: JSON.stringify(isi), redirect: 'follow',
                                     signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { return r.text(); })
       .then(function (teks) {
         clearTimeout(t);
         try { return JSON.parse(teks); }
-        catch (e) { throw new Error('Server menjawab, tapi belum mengenal aplikasi ini. Pastikan Notifikasi.gs sudah ditempel lalu Deploy > Manage deployments > New version.'); }
+        catch (e) { throw new Error('Server menjawab, tapi belum mengenal permintaan ini. Pastikan file Apps Script terbaru sudah ditempel lalu Deploy > Manage deployments > New version.'); }
       }, function () {
         clearTimeout(t);
         throw new Error(navigator.onLine === false ? 'HP sedang offline.'
@@ -123,6 +121,7 @@
     var admin = S.peran === 'admin';
     $('bar').classList.toggle('admin', admin);
     tunjuk('seg', admin);
+    tunjuk('segAI', admin && !!window.ShoeclinAI);
     gantiMode(admin ? (LS.get('mode') || 'admin') : 'kurir');
     perbaruiNotifUI();
     setelahMuat(segarkanTokenDiam);
@@ -132,7 +131,7 @@
     }
     setTimeout(tandaiMuat, 9000);   // cadangan kalau halaman lama sekali
   }
-  /** Admin: siapkan mode yang tidak sedang dibuka, supaya pindah mode langsung tampil. */
+  /** Admin: siapkan halaman yang tidak sedang dibuka, supaya pindah mode langsung tampil. */
   function siapkanModeLain() {
     if (S.peran !== 'admin' || navigator.onLine === false) return;
     var lain = S.mode === 'admin' ? 'kurir' : 'admin';
@@ -150,12 +149,23 @@
     }).catch(function () {});
   }
   function gantiMode(m) {
-    if (m !== 'admin' || S.peran !== 'admin') m = 'kurir';
+    var bisaAI = S.peran === 'admin' && !!window.ShoeclinAI;
+    if (S.peran !== 'admin') m = 'kurir';
+    else if (m === 'ai' && !bisaAI) m = 'admin';
+    else if (m !== 'kurir' && m !== 'ai') m = 'admin';
     S.mode = m; LS.set('mode', m);
     $('segKurir').classList.toggle('on', m === 'kurir');
     $('segAdmin').classList.toggle('on', m === 'admin');
-    $('lblMode').textContent = m === 'admin' ? 'Mode admin' : 'Mode kurir';
+    $('segAI').classList.toggle('on', m === 'ai');
+    $('lblMode').textContent = m === 'admin' ? 'Mode admin' : (m === 'ai' ? 'Asisten AI' : 'Mode kurir');
     ['kurir', 'admin'].forEach(function (k) { if (FRAME[k]) FRAME[k].el.classList.toggle('hide', k !== m); });
+    tunjuk('ai', m === 'ai');
+    if (m === 'ai') {
+      tunjuk('muat', false); tunjuk('offline', false);
+      try { window.ShoeclinAI.buka(); } catch (e) { console.error(e); }
+      tandaiMuat();
+      return;
+    }
     if (FRAME[m]) aturMuat(FRAME[m]); else buatFrame(m);
   }
   function urlFrame(m) {
@@ -200,7 +210,11 @@
     $('muatTeks').textContent = rec.teks ||
       (rec.mode === 'admin' ? 'Membuka dashboard admin...' : 'Membuka portal kurir...');
   }
-  function muatUlang() { var r = FRAME[S.mode]; if (r) muatFrame(r); else buatFrame(S.mode); }
+  function muatUlang() {
+    if (S.mode === 'ai') { if (window.ShoeclinAI) window.ShoeclinAI.buka(); return; }
+    var r = FRAME[S.mode];
+    if (r) muatFrame(r); else buatFrame(S.mode);
+  }
   function hapusFrame(m) {
     var r = FRAME[m]; if (!r) return;
     clearTimeout(r.timer); clearTimeout(r.timerTeks); r.el.remove(); FRAME[m] = null;
@@ -404,7 +418,7 @@
   /* ==================== MENU & TOAST ==================== */
   function bukaSheet() {
     $('iNama').textContent = S.nama || '-';
-    $('iPeran').textContent = S.peran === 'admin' ? 'Admin (bisa mode kurir)' : 'Kurir';
+    $('iPeran').textContent = S.peran === 'admin' ? 'Admin (bisa mode kurir & AI)' : 'Kurir';
     perbaruiNotifUI(); aturPasangUI();
     tunjuk('sheet', true);
   }
@@ -433,6 +447,7 @@
     $('btnPasang2').onclick = pasang;
     $('segKurir').onclick = function () { gantiMode('kurir'); };
     $('segAdmin').onclick = function () { gantiMode('admin'); };
+    $('segAI').onclick = function () { gantiMode('ai'); };
     $('btnBell').onclick = function () { if (statusNotif() === 'mati') aktifkanNotif(); else bukaSheet(); };
     $('btnMenu').onclick = bukaSheet;
     $('nbarYa').onclick = function () { if (statusNotif() === 'mati') aktifkanNotif(); else bukaSheet(); };
@@ -467,5 +482,13 @@
     if (!S.peran || !S.nama || (S.peran === 'admin' && !S.kunci)) return tampilSetup();
     bukaApp();
   }
+
+  // Dipakai asisten.js
+  window.ShoeclinApp = {
+    api: api,
+    kunci: function () { return S.kunci; },
+    nama: function () { return S.nama; },
+    toast: toast
+  };
   mulai();
 })();

@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#1E3A8A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -71,8 +71,8 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
 .title{min-width:0;flex:1}
 .title b{display:block;font-size:14px;font-weight:650;line-height:1.15}
 .title small{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.seg{display:flex;background:var(--brand-50);border:1px solid var(--line);border-radius:11px;padding:3px;flex:none}
-.seg button{border:0;background:none;font-size:12.5px;color:var(--ink-2);padding:6px 11px;border-radius:8px;transition:all .2s}
+.seg{display:flex;background:var(--brand-50);border:1px solid var(--line);border-radius:11px;padding:3px;flex:none;margin-left:auto}
+.seg button{border:0;background:none;font-size:12.5px;color:var(--ink-2);padding:6px 10px;border-radius:8px;transition:all .2s}
 .seg button.on{background:#fff;color:var(--brand-700);font-weight:600;box-shadow:0 2px 6px rgba(30,58,138,.14)}
 .ibtn{position:relative;flex:none;width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:#fff;
   display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
@@ -81,17 +81,17 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
 .ibtn svg.isi{fill:currentColor;stroke:none}
 .dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:#CBD5E1;border:2px solid #fff}
 .dot.on{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}
-@media (max-width:380px){.bar.admin .title small{display:none}.seg button{padding:6px 9px}}
+@media (max-width:410px){.bar.admin .title{display:none}.seg button{padding:6px 9px}}
 .nbar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:12.5px;color:#1E3A8A;
   background:linear-gradient(135deg,#EFF6FF,#F8FBFF);border-bottom:1px solid var(--brand-100);animation:drop .3s ease both}
 .nbar span{flex:1}
 .nbar button{border:0;background:var(--brand);color:#fff;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px}
 .nbar button.x{background:none;color:var(--muted);padding:6px 4px;font-size:14px}
-.stage{flex:1;position:relative;background:#fff}
+.stage{flex:1;position:relative;background:#fff;min-height:0}
 .stage iframe{position:absolute;top:0;left:0;width:100%;height:calc(100% - var(--bot));border:0}
 .muat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
   text-align:center;padding:24px;background:#fff;z-index:2;color:var(--ink-2)}
-.spin{width:26px;height:26px;border:2.5px solid var(--brand-100);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}
+.spin{display:inline-block;width:26px;height:26px;border:2.5px solid var(--brand-100);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}
 
 /* menu */
 .overlay{position:fixed;inset:0;z-index:20;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center}
@@ -120,6 +120,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
 .toast button{flex:none;border:0;border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:600;background:#fff;color:#0F172A}
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 </style>
+<link rel="stylesheet" href="asisten.css">
 </head>
 <body>
 
@@ -137,7 +138,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
     <label class="lbl">Pakai sebagai</label>
     <div class="roles">
       <button type="button" class="role on" id="rKurir"><b>Kurir</b><span>Input order baru dan pantau pengerjaan.</span></button>
-      <button type="button" class="role" id="rAdmin"><b>Admin</b><span>Dashboard lengkap, bisa pindah ke mode kurir kapan saja.</span></button>
+      <button type="button" class="role" id="rAdmin"><b>Admin</b><span>Dashboard lengkap, asisten AI, dan bisa pindah ke mode kurir.</span></button>
     </div>
 
     <div id="wKunci" class="hide">
@@ -164,6 +165,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
     <div class="seg hide" id="seg">
       <button type="button" id="segKurir">Kurir</button>
       <button type="button" id="segAdmin">Admin</button>
+      <button type="button" id="segAI" class="hide">AI</button>
     </div>
     <button type="button" class="ibtn" id="btnBell" aria-label="Notifikasi">
       <svg viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 4.2 1.4 5.6 2 6.2H4c.6-.6 2-2 2-6.2z"/><path d="M10 19.6a2.1 2.1 0 0 0 4 0"/></svg>
@@ -185,6 +187,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
     <div class="muat hide" id="offline"><b>Tidak ada sinyal</b>
       <p class="hint">Halaman dimuat otomatis begitu sinyal kembali.</p>
       <button type="button" class="btn ghost sm" id="btnCoba2">Coba lagi</button></div>
+    <div class="ai hide" id="ai"></div>
   </div>
 </section>
 
@@ -216,6 +219,7 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(37,99,235,.13)}
 
 <!-- Library notifikasi (Firebase) dimuat belakangan oleh app.js supaya halaman tampil lebih cepat. -->
 <script src="config.js"></script>
+<script src="asisten.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,17 +1,17 @@
 /*************************************************************
- * SHOECLIN APP — sw.js (versi 1.1)
+ * SHOECLIN APP — sw.js (versi 1.2)
  * Pekerja latar: menampilkan notifikasi dari Firebase dan menyimpan
  * tampilan aplikasi di HP. Tidak perlu diubah.
  *
- * 1.1: tampilan aplikasi langsung diambil dari memori HP (instan),
- *      versi terbaru dari GitHub diunduh diam-diam untuk pembukaan berikutnya.
+ * 1.1: tampilan diambil dari memori HP (instan), versi baru diunduh diam-diam.
+ * 1.2: ikut menyimpan file asisten AI.
  *************************************************************/
 importScripts('config.js');
 
 var C = self.SHOECLIN || {};
 var CACHE = 'shoeclin-' + (C.versi || '1');
-var ASET = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg',
-            'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+var ASET = ['./', 'index.html', 'app.js', 'asisten.js', 'asisten.css', 'config.js', 'manifest.webmanifest',
+            'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 if (C.firebase && C.firebase.apiKey) {
   try {
@@ -37,6 +37,7 @@ self.addEventListener('activate', function (e) {
 });
 
 // Pakai simpanan di HP dulu (instan), sambil mengambil versi baru di belakang.
+// Permintaan ke server lain (Apps Script, Gemini, Claude, Firebase) tidak disentuh.
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
@@ -57,7 +58,7 @@ self.addEventListener('fetch', function (e) {
   }));
 });
 
-// Klik notifikasi yang bukan dari Firebase (misalnya notifikasi tes).
+// Klik notifikasi yang bukan dari Firebase (notifikasi tes, "Analisis selesai").
 self.addEventListener('notificationclick', function (e) {
   var d = (e.notification && e.notification.data) || {};
   if (d.FCM_MSG) return;   // ditangani Firebase
